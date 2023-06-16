@@ -1,5 +1,6 @@
 use crate::sqlite_schema::SqliteSchema;
 use anyhow::Result;
+use std::collections::HashMap;
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::SeekFrom;
@@ -20,7 +21,7 @@ pub fn read_varint(input: &[u8]) -> Result<(u64, &[u8])> {
     Ok((varint, &input[bytes_consumed..]))
 }
 
-pub fn get_tables(filepath: &str) -> Result<Vec<SqliteSchema>> {
+pub fn get_tables(filepath: &str) -> Result<HashMap<String, SqliteSchema>> {
     // Assume no overflow
     let mut file = File::open(filepath)?;
     let mut header = [0; 100];
@@ -39,7 +40,7 @@ pub fn get_tables(filepath: &str) -> Result<Vec<SqliteSchema>> {
         .map(|pair| u16::from_be_bytes([pair[0], pair[1]]))
         .collect();
 
-    let mut tables: Vec<SqliteSchema> = Vec::new();
+    let mut tables: HashMap<String, SqliteSchema> = HashMap::new();
 
     for i in 0..num_tables {
         let cell_content = &page1[cell_pointer_array[i as usize] as usize..];
@@ -48,7 +49,7 @@ pub fn get_tables(filepath: &str) -> Result<Vec<SqliteSchema>> {
         let (payload, _rest) = cell_content.split_at(payload_size as usize);
 
         let schema = SqliteSchema::from_bytes(payload)?;
-        tables.push(schema);
+        tables.insert(schema.name.to_owned(), schema);
     }
     Ok(tables)
 }

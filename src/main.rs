@@ -44,8 +44,8 @@ fn main() -> Result<()> {
             let tables = util::get_tables(&args[1])?;
 
             let mut table_names: Vec<String> = Vec::new();
-            for table in tables {
-                table_names.push(table.tbl_name.clone());
+            for (table_name, _table_schema) in tables.into_iter() {
+                table_names.push(table_name);
             }
             println!("{}", table_names.join(" "));
         }
@@ -53,6 +53,7 @@ fn main() -> Result<()> {
             assert_eq!(command[1], "COUNT(*)");
             assert_eq!(command[2], "FROM");
             let table_name = command[3];
+            let tables = util::get_tables(&args[1])?;
         }
         _ => bail!("Missing or invalid command passed: {:?}", command),
     }
