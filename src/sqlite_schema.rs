@@ -23,19 +23,16 @@ impl SqliteSchema {
         let (schema_type_type, header) = read_varint(header)?;
         let schema_type_size = (schema_type_type - 13) / 2;
         let schema_type = str::from_utf8(&content[..schema_type_size as usize])?.to_owned();
-        println!("schema type: {}", schema_type);
         content = &content[schema_type_size as usize..];
 
         let (name_type, header) = read_varint(header)?;
         let name_size = (name_type - 13) / 2;
         let name = str::from_utf8(&content[..name_size as usize])?.to_owned();
-        println!("name: {}", name);
         content = &content[name_size as usize..];
 
         let (tbl_name_type, header) = read_varint(header)?;
         let tbl_name_size = (tbl_name_type - 13) / 2;
         let tbl_name = str::from_utf8(&content[..tbl_name_size as usize])?.to_owned();
-        println!("table name: {}", tbl_name);
         content = &content[tbl_name_size as usize..];
 
         let (rootpage_type, header) = read_varint(header)?;
