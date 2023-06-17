@@ -21,7 +21,7 @@ pub fn read_varint(input: &[u8]) -> anyhow::Result<(u64, &[u8])> {
     Ok((varint, &input[bytes_consumed..]))
 }
 
-pub fn get_tables(filepath: &str) -> anyhow::Result<HashMap<String, SqliteSchema>> {
+pub fn get_tables(filepath: &str) -> anyhow::Result<Vec<SqliteSchema>> {
     // Assume no overflow
     let mut file = File::open(filepath)?;
     let mut header = [0; 100];
@@ -40,7 +40,7 @@ pub fn get_tables(filepath: &str) -> anyhow::Result<HashMap<String, SqliteSchema
         .map(|pair| u16::from_be_bytes([pair[0], pair[1]]))
         .collect();
 
-    let mut tables: HashMap<String, SqliteSchema> = HashMap::new();
+    let mut tables: Vec<SqliteSchema> = Vec::new();
 
     for i in 0..num_tables {
         let cell_content = &page1[cell_pointer_array[i as usize] as usize..];
@@ -49,14 +49,18 @@ pub fn get_tables(filepath: &str) -> anyhow::Result<HashMap<String, SqliteSchema
         let (payload, _rest) = cell_content.split_at(payload_size as usize);
 
         let schema = SqliteSchema::from_bytes(payload)?;
-        tables.insert(schema.name.to_owned(), schema);
+        tables.push(schema);
     }
     Ok(tables)
 }
 
 pub fn count_table_rows(table_name: &str, filepath: &str) -> anyhow::Result<u64> {
     let tables = get_tables(filepath)?;
-    if let Some(table_schema) = tables.get(table_name) {
+    let mut table_map: HashMap<String, SqliteSchema> = HashMap::new();
+    for table in tables {
+        table_map.insert(table.tbl_name.to_owned(), table);
+    }
+    if let Some(table_schema) = table_map.get(table_name) {
         let mut file = File::open(filepath)?;
         let mut db_header = [0; 100];
         file.read_exact(&mut db_header)?;

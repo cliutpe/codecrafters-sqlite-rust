@@ -43,10 +43,10 @@ fn main() -> Result<()> {
             let tables = util::get_tables(&args[1])?;
 
             let mut table_names: Vec<String> = Vec::new();
-            for (table_name, _table_schema) in tables.into_iter() {
-                table_names.push(table_name);
+            for table in tables {
+                table_names.push(table.tbl_name);
             }
-            print!("{}", table_names.join(" "));
+            println!("{}", table_names.join(" "));
         }
         "SELECT" => {
             assert_eq!(command[1], "COUNT(*)");
