@@ -46,7 +46,7 @@ fn main() -> Result<()> {
             for (table_name, _table_schema) in tables.into_iter() {
                 table_names.push(table_name);
             }
-            println!("{}", table_names.join(" "));
+            print!("{}", table_names.join(" "));
         }
         "SELECT" => {
             assert_eq!(command[1], "COUNT(*)");
