@@ -17,7 +17,7 @@ fn main() -> Result<()> {
     // Parse command and act accordingly
     let command = &args[2].as_str().split(" ").collect::<Vec<&str>>();
 
-    match command[0] {
+    match command[0].to_lowercase().as_str() {
         ".dbinfo" => {
             let mut file = File::open(&args[1])?;
             let mut header = [0; 100];
@@ -48,9 +48,9 @@ fn main() -> Result<()> {
             }
             println!("{}", table_names.join(" "));
         }
-        "SELECT" => {
-            assert_eq!(command[1], "COUNT(*)");
-            assert_eq!(command[2], "FROM");
+        "select" => {
+            assert_eq!(command[1].to_lowercase().as_str(), "count(*)");
+            assert_eq!(command[2].to_lowercase().as_str(), "from");
             let table_name = command[3];
             let num_rows = util::count_table_rows(table_name, &args[1])?;
             println!("{}", num_rows);
