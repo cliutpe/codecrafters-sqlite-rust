@@ -67,7 +67,9 @@ pub fn count_table_rows(table_name: &str, filepath: &str) -> anyhow::Result<u64>
         let page_size = u16::from_be_bytes([db_header[16], db_header[17]]);
 
         let mut page = Vec::new();
-        file.seek(SeekFrom::Start(table_schema.rootpage * page_size as u64))?;
+        file.seek(SeekFrom::Start(
+            (table_schema.rootpage - 1) * page_size as u64,
+        ))?;
         file.take(page_size.into()).read_to_end(&mut page)?;
 
         let page_header = &page[..8];
