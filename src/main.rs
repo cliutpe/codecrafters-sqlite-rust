@@ -2,7 +2,6 @@ pub mod sqlite_schema;
 pub mod util;
 use anyhow::{bail, Result};
 
-use crate::util::read_varint;
 use std::fs::File;
 use std::io::prelude::*;
 
@@ -53,7 +52,8 @@ fn main() -> Result<()> {
             assert_eq!(command[1], "COUNT(*)");
             assert_eq!(command[2], "FROM");
             let table_name = command[3];
-            let tables = util::get_tables(&args[1])?;
+            let num_rows = util::count_table_rows(table_name, &args[1])?;
+            println!("{}", num_rows);
         }
         _ => bail!("Missing or invalid command passed: {:?}", command),
     }

@@ -7,7 +7,7 @@ pub struct SqliteSchema {
     pub schema_type: String,
     pub name: String,
     pub tbl_name: String,
-    pub rootpage: i64,
+    pub rootpage: u64,
     pub sql: String,
 }
 
@@ -48,7 +48,11 @@ impl SqliteSchema {
                 rootpage_type
             ),
         };
-        let rootpage = 0; //u64::from_be_bytes(&content[..rootpage_size as usize].try_into());
+        let mut rootpage_bytes: [u8; 8] = [0; 8];
+        for (i, byte) in &mut content[..rootpage_size as usize].iter().rev().enumerate() {
+            rootpage_bytes[rootpage_bytes.len() - i - 1] = byte.to_owned();
+        }
+        let rootpage = u64::from_be_bytes(rootpage_bytes);
         content = &content[rootpage_size as usize..];
 
         let (sql_type, _header) = read_varint(header)?;

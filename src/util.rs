@@ -1,11 +1,11 @@
 use crate::sqlite_schema::SqliteSchema;
-use anyhow::Result;
+use anyhow;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::SeekFrom;
 
-pub fn read_varint(input: &[u8]) -> Result<(u64, &[u8])> {
+pub fn read_varint(input: &[u8]) -> anyhow::Result<(u64, &[u8])> {
     let mut bytes = input.iter();
     let mut varint: u64 = 0;
     let mut msb = 1;
@@ -21,7 +21,7 @@ pub fn read_varint(input: &[u8]) -> Result<(u64, &[u8])> {
     Ok((varint, &input[bytes_consumed..]))
 }
 
-pub fn get_tables(filepath: &str) -> Result<HashMap<String, SqliteSchema>> {
+pub fn get_tables(filepath: &str) -> anyhow::Result<HashMap<String, SqliteSchema>> {
     // Assume no overflow
     let mut file = File::open(filepath)?;
     let mut header = [0; 100];
@@ -52,6 +52,27 @@ pub fn get_tables(filepath: &str) -> Result<HashMap<String, SqliteSchema>> {
         tables.insert(schema.name.to_owned(), schema);
     }
     Ok(tables)
+}
+
+pub fn count_table_rows(table_name: &str, filepath: &str) -> anyhow::Result<u64> {
+    let tables = get_tables(filepath)?;
+    if let Some(table_schema) = tables.get(table_name) {
+        let mut file = File::open(filepath)?;
+        let mut db_header = [0; 100];
+        file.read_exact(&mut db_header)?;
+        let page_size = u16::from_be_bytes([db_header[16], db_header[17]]);
+
+        let mut page = Vec::new();
+        file.seek(SeekFrom::Start(table_schema.rootpage * page_size as u64))?;
+        file.take(page_size.into()).read_to_end(&mut page)?;
+
+        let page_header = &page[..8];
+        let num_page_cells = u16::from_be_bytes([page_header[3], page_header[4]]);
+
+        Ok(num_page_cells.into())
+    } else {
+        Err(anyhow::anyhow!("Table {} not found.", table_name))
+    }
 }
 
 #[cfg(test)]
