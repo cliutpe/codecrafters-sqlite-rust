@@ -1,3 +1,5 @@
+pub mod record;
+pub mod sql_parser;
 pub mod sqlite_schema;
 pub mod util;
 use anyhow::{bail, Result};
@@ -48,13 +50,24 @@ fn main() -> Result<()> {
             }
             println!("{}", table_names.join(" "));
         }
-        "select" => {
-            assert_eq!(command[1].to_lowercase().as_str(), "count(*)");
-            assert_eq!(command[2].to_lowercase().as_str(), "from");
-            let table_name = command[3];
-            let num_rows = util::count_table_rows(table_name, &args[1])?;
-            println!("{}", num_rows);
-        }
+        "select" => match command[1].to_lowercase().as_str() {
+            "count(*)" => {
+                assert_eq!(command[2].to_lowercase().as_str(), "from");
+                let table_name = command[3];
+                let num_rows = util::count_table_rows(table_name, &args[1])?;
+                println!("{}", num_rows);
+            }
+            _ => {
+                let field_name = command[1].to_lowercase();
+                let table_name = command[3];
+                let records =
+                    util::get_records_from_table(table_name, field_name.as_str(), &args[1])?;
+
+                for record in records {
+                    println!("{}", record)
+                }
+            }
+        },
         _ => bail!("Missing or invalid command passed: {:?}", command),
     }
 
