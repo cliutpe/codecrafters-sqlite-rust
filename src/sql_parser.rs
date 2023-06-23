@@ -1,8 +1,6 @@
-use anyhow::{bail, Result};
 use nom::bytes::complete::take_until;
 use nom::bytes::complete::{is_not, tag};
 use nom::character::complete::multispace0;
-use nom::combinator::map;
 use nom::multi::separated_list0;
 use nom::sequence::{delimited, preceded};
 use nom::IResult;
@@ -23,7 +21,7 @@ pub fn parse_first_word(input: &str) -> IResult<&str, &str> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
+    use anyhow::Result;
     #[test]
     fn test_parse_field_from_create_table() -> Result<()> {
         let statement = "CREATE TABLE student\n(\n\tid integer primary key autoincrement,\n\tname text,\n\tclass text\n)";

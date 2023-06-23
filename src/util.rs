@@ -124,7 +124,6 @@ pub fn get_records_from_table(
         let page_size = get_page_size(filepath)?;
 
         let create_statement = table_schema.sql.clone();
-        println!("{:?}", table_schema.sql);
         let field_names = parse_create_table(create_statement.as_str())
             // FIXME: the map_err with a closure that never fails is here so that the IResult, which contains the create statement won't propagate
             // It never fails so I can just unwrap
