@@ -58,13 +58,24 @@ fn main() -> Result<()> {
                 println!("{}", num_rows);
             }
             _ => {
-                let field_name = command[1].to_lowercase();
+                let select_statement = sql_parser::parse_select_statement(&args[2].to_lowercase())
+                    .unwrap()
+                    .1; //FIXME: lifetime...
+                let fields = select_statement
+                    .selector
+                    .split(',')
+                    .map(|s| s.trim())
+                    .collect::<Vec<&str>>();
+
                 let table_name = command[3];
-                let records =
-                    util::get_records_from_table(table_name, field_name.as_str(), &args[1])?;
+                let records = util::get_records_from_table(table_name, fields, &args[1])?;
 
                 for record in records {
-                    println!("{}", record)
+                    let record_strings = record
+                        .iter()
+                        .map(|s| s.to_string())
+                        .collect::<Vec<String>>();
+                    println!("{}", record_strings.join("|"));
                 }
             }
         },

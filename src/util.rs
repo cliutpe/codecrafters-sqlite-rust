@@ -115,9 +115,9 @@ pub fn count_table_rows(table_name: &str, filepath: &str) -> anyhow::Result<u64>
 
 pub fn get_records_from_table(
     table_name: &str,
-    field: &str,
+    fields: Vec<&str>,
     filepath: &str,
-) -> anyhow::Result<Vec<RecordField>> {
+) -> anyhow::Result<Vec<Vec<RecordField>>> {
     let table_map = get_table_name_to_schema_map(filepath)?;
 
     if let Some(table_schema) = table_map.get(table_name) {
@@ -133,33 +133,45 @@ pub fn get_records_from_table(
             .iter()
             .map(|s| parse_first_word(s).unwrap().1)
             .collect::<Vec<&str>>();
+
         let mut field_name_map = HashMap::new();
         for (i, field_name) in field_names.iter().enumerate() {
             field_name_map.insert(*field_name, i);
         }
-        if let Some(field_index) = field_name_map.get(field) {
-            let page = read_page(filepath, page_size, table_schema.rootpage)?;
 
-            let page_header = &page[..8];
-            let num_page_cells = u16::from_be_bytes([page_header[3], page_header[4]]);
-            let cell_pointer_array: Vec<u16> = page[8..(100 + num_page_cells * 2) as usize]
-                .chunks(2)
-                .map(|pair| u16::from_be_bytes([pair[0], pair[1]]))
-                .collect();
+        let page = read_page(filepath, page_size, table_schema.rootpage)?;
 
-            let mut records = Vec::new();
-            for i in 0..num_page_cells {
-                let cell_content = &page[cell_pointer_array[i as usize] as usize..];
-                let (payload_size, cell_content) = read_varint(cell_content)?;
-                let (_row_id, cell_content) = read_varint(cell_content)?;
-                let (payload, _rest) = cell_content.split_at(payload_size as usize);
-                let record = parse_records(payload)?;
-                records.push(record[*field_index].clone());
+        let page_header = &page[..8];
+        let num_page_cells = u16::from_be_bytes([page_header[3], page_header[4]]);
+        let cell_pointer_array: Vec<u16> = page[8..(100 + num_page_cells * 2) as usize]
+            .chunks(2)
+            .map(|pair| u16::from_be_bytes([pair[0], pair[1]]))
+            .collect();
+
+        let mut field_indices = Vec::new();
+        for field in fields {
+            if let Some(field_index) = field_name_map.get(field) {
+                field_indices.push(*field_index);
+            } else {
+                bail!("Field {} not found in table", field)
             }
-            Ok(records)
-        } else {
-            bail!("Field {} not found in table", field)
         }
+
+        let mut records = Vec::new();
+        for i in 0..num_page_cells {
+            let cell_content = &page[cell_pointer_array[i as usize] as usize..];
+            let (payload_size, cell_content) = read_varint(cell_content)?;
+            let (_row_id, cell_content) = read_varint(cell_content)?;
+            let (payload, _rest) = cell_content.split_at(payload_size as usize);
+            let record = parse_records(payload)?;
+
+            let record_slice = field_indices
+                .iter()
+                .map(|i| record[*i].clone())
+                .collect::<Vec<RecordField>>();
+            records.push(record_slice);
+        }
+        Ok(records)
     } else {
         Err(anyhow::anyhow!("Table {} not found.", table_name))
     }
