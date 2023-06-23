@@ -42,15 +42,8 @@ pub fn read_varint(input: &[u8]) -> anyhow::Result<(u64, &[u8])> {
 
 pub fn get_tables(filepath: &str) -> anyhow::Result<Vec<SqliteSchema>> {
     // Assume no overflow
-    let mut file = File::open(filepath)?;
-    let mut header = [0; 100];
-    file.read_exact(&mut header)?;
-
-    let page_size = u16::from_be_bytes([header[16], header[17]]);
-    let mut page1 = Vec::new();
-    file.seek(SeekFrom::Start(0))?;
-    file.take(page_size.into()).read_to_end(&mut page1)?;
-
+    let page_size = get_page_size(filepath)?;
+    let page1 = read_page(filepath, page_size, 1)?;
     let page1_header = &page1[100..108];
     let num_tables = u16::from_be_bytes([page1_header[3], page1_header[4]]);
     let _cell_content_offset = u16::from_be_bytes([page1_header[5], page1_header[6]]);
@@ -76,15 +69,8 @@ pub fn get_tables(filepath: &str) -> anyhow::Result<Vec<SqliteSchema>> {
 pub fn get_table_name_to_schema_map(
     filepath: &str,
 ) -> anyhow::Result<HashMap<String, SqliteSchema>> {
-    // Assume no overflow
-    let mut file = File::open(filepath)?;
-    let mut header = [0; 100];
-    file.read_exact(&mut header)?;
-
-    let page_size = u16::from_be_bytes([header[16], header[17]]);
-    let mut page1 = Vec::new();
-    file.seek(SeekFrom::Start(0))?;
-    file.take(page_size.into()).read_to_end(&mut page1)?;
+    let page_size = get_page_size(filepath)?;
+    let page1 = read_page(filepath, page_size, 1)?;
 
     let page1_header = &page1[100..108];
     let num_tables = u16::from_be_bytes([page1_header[3], page1_header[4]]);
@@ -115,16 +101,8 @@ pub fn count_table_rows(table_name: &str, filepath: &str) -> anyhow::Result<u64>
         table_map.insert(table.tbl_name.to_owned(), table);
     }
     if let Some(table_schema) = table_map.get(table_name) {
-        let mut file = File::open(filepath)?;
-        let mut db_header = [0; 100];
-        file.read_exact(&mut db_header)?;
-        let page_size = u16::from_be_bytes([db_header[16], db_header[17]]);
-
-        let mut page = Vec::new();
-        file.seek(SeekFrom::Start(
-            (table_schema.rootpage - 1) * page_size as u64,
-        ))?;
-        file.take(page_size.into()).read_to_end(&mut page)?;
+        let page_size = get_page_size(filepath)?;
+        let page = read_page(filepath, page_size, table_schema.rootpage)?;
 
         let page_header = &page[..8];
         let num_page_cells = u16::from_be_bytes([page_header[3], page_header[4]]);
