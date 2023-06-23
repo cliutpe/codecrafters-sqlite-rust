@@ -65,7 +65,7 @@ mod tests {
 
     #[test]
     fn test_parse_select_statement() -> Result<()> {
-        let statement = "select id, name from student where id > 500";
+        let statement = "select butterscotch, pistachio, banana from mango";
 
         let parsed = parse_select_statement(statement)?;
         println!("{:?}", parsed);
