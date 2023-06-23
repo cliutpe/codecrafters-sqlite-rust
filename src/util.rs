@@ -116,6 +116,7 @@ pub fn count_table_rows(table_name: &str, filepath: &str) -> anyhow::Result<u64>
 pub fn get_records_from_table(
     table_name: &str,
     fields: Vec<&str>,
+    condition: Option<(String, String)>,
     filepath: &str,
 ) -> anyhow::Result<Vec<Vec<RecordField>>> {
     let table_map = get_table_name_to_schema_map(filepath)?;
@@ -157,6 +158,15 @@ pub fn get_records_from_table(
             }
         }
 
+        let mut condition_pair: Option<(usize, String)> = None;
+        if let Some((condition_on, condition_value)) = condition {
+            if let Some(index) = field_name_map.get(condition_on.as_str()) {
+                condition_pair = Some((*index, condition_value));
+            } else {
+                bail!("Field {} not found in table", condition_on)
+            }
+        }
+
         let mut records = Vec::new();
         for i in 0..num_page_cells {
             let cell_content = &page[cell_pointer_array[i as usize] as usize..];
@@ -169,7 +179,14 @@ pub fn get_records_from_table(
                 .iter()
                 .map(|i| record[*i].clone())
                 .collect::<Vec<RecordField>>();
-            records.push(record_slice);
+
+            if let Some((condition_index, ref condition_value)) = condition_pair {
+                if record[condition_index].to_string().to_lowercase() == *condition_value {
+                    records.push(record_slice)
+                }
+            } else {
+                records.push(record_slice);
+            }
         }
         Ok(records)
     } else {

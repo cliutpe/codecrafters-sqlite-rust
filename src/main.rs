@@ -68,7 +68,9 @@ fn main() -> Result<()> {
                     .collect::<Vec<&str>>();
 
                 let table_name = select_statement.from.as_str();
-                let records = util::get_records_from_table(table_name, fields, &args[1])?;
+                let condition = select_statement.condition;
+                let records =
+                    util::get_records_from_table(table_name, fields, condition, &args[1])?;
 
                 for record in records {
                     let record_strings = record

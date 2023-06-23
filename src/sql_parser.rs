@@ -1,7 +1,7 @@
 use nom::bytes::complete::take_until;
 use nom::bytes::complete::{is_not, tag};
 use nom::character::complete::multispace0;
-use nom::combinator::map;
+use nom::combinator::{map, opt};
 use nom::multi::separated_list0;
 use nom::sequence::{delimited, preceded, tuple};
 use nom::IResult;
@@ -10,7 +10,7 @@ use nom::IResult;
 pub struct SelectStatement {
     pub selector: String, // TODO: is using &str better here?
     pub from: String,
-    //conditions: Vec<String>,
+    pub condition: Option<(String, String)>, // Simplified condition with no AND
 }
 
 fn parse_list(input: &str) -> IResult<&str, Vec<&str>> {
@@ -30,6 +30,12 @@ pub fn parse_selector(input: &str) -> IResult<&str, &str> {
     delimited(tag("select"), take_until("from"), multispace0)(input)
 }
 
+pub fn parse_condition(input: &str) -> IResult<&str, Option<(&str, &str)>> {
+    let parser0 = delimited(tag("where"), take_until("="), tag("="));
+    let parser1 = preceded(multispace0, is_not("\n\r"));
+    opt(tuple((parser0, parser1)))(input)
+}
+
 pub fn parse_from(input: &str) -> IResult<&str, &str> {
     preceded(
         tag("from"),
@@ -38,11 +44,19 @@ pub fn parse_from(input: &str) -> IResult<&str, &str> {
 }
 
 pub fn parse_select_statement(input: &str) -> IResult<&str, SelectStatement> {
-    let parser = preceded(multispace0, tuple((parse_selector, parse_from)));
+    let select_from_parser = preceded(multispace0, tuple((parse_selector, parse_from)));
+    let parser = tuple((select_from_parser, parse_condition));
     // TODO: maybe map_res here? whats the difference?
-    map(parser, |(selector, from)| SelectStatement {
+    map(parser, |((selector, from), condition)| SelectStatement {
         selector: selector.trim().to_owned(),
         from: from.to_owned(),
+        condition: match condition {
+            Some((on, value)) => Some((
+                on.trim().to_owned(),
+                value.replace("\"", "").replace("\'", "").trim().to_owned(),
+            )),
+            None => None,
+        },
     })(input)
 }
 
@@ -65,7 +79,7 @@ mod tests {
 
     #[test]
     fn test_parse_select_statement() -> Result<()> {
-        let statement = "select butterscotch, pistachio, banana from mango";
+        let statement = "select butterscotch, pistachio from mango where name = 'super mango'";
 
         let parsed = parse_select_statement(statement)?;
         println!("{:?}", parsed);
